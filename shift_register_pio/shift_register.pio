@@ -2,8 +2,8 @@
 .side_set 2 // Use two bits for side_set, lets us address up to 3 pins in side directive
 
 .wrap_target
-    out x, 1 side 0b01 // move 1 bit from osr to x register, drive SRCLK high & RCLK low for clock pulse
-    mov pins, !x side 0b10 // move inverse of x to SER pin, drive SRCLK low & RCLK high to latch
+    out x, 1 side 0b01 // move 1 bit from osr to x register, drive RCLK high & SRCLK low for clock pulse
+    mov pins, !x side 0b10 // move inverse of x to SER pin, drive RCLK low & SRCLK high to latch
 .wrap
 
 % c-sdk {
