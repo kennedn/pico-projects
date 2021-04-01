@@ -1,0 +1,37 @@
+.program shift_register
+.side_set 2 // Use two bits for side_set, lets us address up to 3 pins in side directive
+
+.wrap_target
+    out x, 1 side 0b01 // move 1 bit from osr to x register, drive SRCLK high & RCLK low for clock pulse
+    mov pins, !x side 0b10 // move inverse of x to SER pin, drive SRCLK low & RCLK high to latch
+.wrap
+
+% c-sdk {
+#include "hardware/clocks.h"
+static inline void shift_register_program_init(PIO pio, uint sm, uint offset, uint ser_pin, uint rclk_pin, uint pin_count, float freq_mhz) {
+    pio_sm_config c = shift_register_program_get_default_config(offset);
+    //Set SER up as out pin
+    sm_config_set_out_pins(&c, ser_pin, 1);
+    // Set SRCLK as the base sideset pin, count of pins in sideset group is dictated by .side_set <bits> above
+    sm_config_set_sideset_pins(&c, rclk_pin);
+    
+    // Connect the GPIO pins up to our given pio instance (only required because its output)
+    for (int i =0; i < pin_count; i++) {
+        pio_gpio_init(pio, (ser_pin + i) % 32);
+    }
+    // Configure the pin direction for the pins
+    pio_sm_set_consecutive_pindirs(pio, sm, ser_pin, pin_count, true);
+
+    // Configure autopull to happen at the 8 bit mark
+    sm_config_set_out_shift(&c, true, true, 8);
+
+    // Calculate a clock dividor from passed frequency, *1000000 to convert from Mhz to hz and *2 because there are 2 asm instructions
+    float div = clock_get_hz(clk_sys) / ((freq_mhz * 1000000) * 2);
+    sm_config_set_clkdiv(&c, div);
+
+    // Init the pio state machine with PC at offset
+    pio_sm_init(pio, sm, offset, &c);
+    // Start sm
+    pio_sm_set_enabled(pio, sm, true);
+}
+%}

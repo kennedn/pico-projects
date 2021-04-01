@@ -1,0 +1,19 @@
+{
+    "folders":
+    [
+        {
+            "path": "shift_register",
+        },
+        {
+            "path": "build",
+            "name": "Build",
+        }
+    ],
+    "build_systems":
+    [
+        {
+            "name": "List",
+            "shell_cmd": "ls -l"
+        }
+    ]
+}
