@@ -1,0 +1,50 @@
+.program shift
+.side_set 2 // Use two bits for side_set, lets us address 2 consecutive pins starting at clk_pin_base
+
+// Asserts LATCH pin at the end of the bit stream
+.wrap_target
+loop:
+    out pins, 1 side 0b00  // Move 1 bit off OSR to SER pin, drive LATCH and CLOCK low
+    jmp !osre loop side 0b10 // Jmp to loop if OSR is not empty, drive CLOCK high
+    nop side 0b01 // Drive LATCH high
+.wrap
+
+
+// // Drives both CLOCK and LATCH so that LATCH is the inverse of CLOCK
+// .wrap_target
+//     out pins 1 side 0b01  // Move 1 bit off OSR to SER pin, drive LATCH high and CLOCK low
+//     nop side 0b10 // Drive LATCH low and CLOCK High 
+// .wrap
+
+% c-sdk {
+#include "hardware/clocks.h"
+static inline void shift_program_init(PIO pio, uint sm, uint offset, uint ser_pin, uint clk_pin_base, float freq_mhz) {
+    pio_sm_config c = shift_program_get_default_config(offset);
+    //Set SER up as out pin
+    sm_config_set_out_pins(&c, ser_pin, 1);
+    // Set SRCLK as the base sideset pin, count of pins in sideset group is dictated by .side_set <bits> above
+    sm_config_set_sideset_pins(&c, clk_pin_base);
+
+    pio_gpio_init(pio, ser_pin);
+    pio_gpio_init(pio, clk_pin_base);
+    pio_gpio_init(pio, clk_pin_base + 1);
+
+    // Invert serial output as 7 segment display is common anode
+    gpio_set_outover(ser_pin, GPIO_OVERRIDE_INVERT);
+
+    // Configure the pin direction for the pins
+    pio_sm_set_consecutive_pindirs(pio, sm, ser_pin, 3, true);
+
+    // Configure autopull to happen at the 8 bit mark
+    sm_config_set_out_shift(&c, true, true, 8);
+
+    // Calculate a clock dividor from passed frequency, *1000000 to convert from Mhz to hz and *2 because there are 2 asm instructions
+    float div = clock_get_hz(clk_sys) / ((freq_mhz * 1000000) * 2);
+    sm_config_set_clkdiv(&c, div);
+
+    // Init the pio state machine with PC at offset
+    pio_sm_init(pio, sm, offset, &c);
+    // Start sm
+    pio_sm_set_enabled(pio, sm, true);
+}
+%}

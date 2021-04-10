@@ -25,6 +25,7 @@
 #define SEG_F   0b10001110 
 #define SEG_P   0b11001110 
 #define SEG_DOT 0b00000001
+#define SEG_NULL 0b00000000
 
 void sendByteToShiftRegister(char byte) {
     gpio_put(LATCH_PIN, 0);
@@ -40,7 +41,7 @@ void sendByteToShiftRegister(char byte) {
 
 int main() {
     stdio_init_all();
-    const int segments[] = {SEG_0, SEG_1, SEG_2, SEG_3, SEG_4, SEG_5, SEG_6, SEG_7, 
+    const int segments[] = {SEG_NULL, SEG_1, SEG_2, SEG_3, SEG_4, SEG_5, SEG_6, SEG_7, 
                             SEG_8, SEG_9, SEG_A, SEG_B, SEG_C, SEG_D, SEG_E, SEG_F};
     gpio_init(SERIAL_PIN);
     gpio_init(LATCH_PIN);
@@ -58,21 +59,14 @@ int main() {
     bool isMoving = true;
 
     while (true) {
+
         bool button = gpio_get(BUTTON_PIN);
         if (button && !lastButton) { 
-            isMoving = !isMoving; 
-            sendByteToShiftRegister(isMoving ? segments[counter] : segments[counter] | SEG_DOT);
-        } 
-        
-
-        if (isMoving && timer == 0) { 
-            counter = ++counter % count_of(segments);
+            counter = (counter + 1) % 16;
             sendByteToShiftRegister(segments[counter]);
         }
-
-        sleep_ms(10);
-        timer = (timer + 10) % 450;
         lastButton = button;
+        sleep_ms(10);
     }
     // while (true) {
     //     switch(getchar()) {

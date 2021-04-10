@@ -15,6 +15,7 @@ pico_sdk_init()
 # Add blink example
 add_subdirectory(shift_register)
 add_subdirectory(shift_register_pio)
+add_subdirectory(multi_pio)
 add_subdirectory(uart)
 add_subdirectory(hello_pio)
 

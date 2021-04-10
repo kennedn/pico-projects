@@ -1,0 +1,27 @@
+.program hello
+
+.wrap_target
+    out x, 32
+    mov pins, :: x
+.wrap
+
+% c-sdk {
+static inline void hello_program_init(PIO pio, uint sm, uint offset, uint pin, uint pin_count) {
+    pio_sm_config c = hello_program_get_default_config(offset);
+    //Set output pins
+    sm_config_set_out_pins(&c, pin, pin_count);
+    // Connect the GPIO up to our given pio instance (only required because its output)
+    for (int i =0; i < pin_count; i++) {
+        pio_gpio_init(pio, (pin + i) % 32);
+    }
+    // Configure the pin direction for the pins
+    pio_sm_set_consecutive_pindirs(pio, sm, pin, pin_count, true);
+
+    sm_config_set_out_shift(&c, false, true, 32);
+
+    // Init the pio state machine with PC at offset
+    pio_sm_init(pio, sm, offset, &c);
+    // Start sm
+    pio_sm_set_enabled(pio, sm, true);
+}
+%}
