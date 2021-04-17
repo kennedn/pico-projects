@@ -39,12 +39,12 @@ int main() {
 
     // Get a free state machine and call our init function from injected header
     uint sm = pio_claim_unused_sm(pio, true);
-    shift_register_program_init(pio, sm, offset, SER, RCLK, 3, 10);
+    shift_register_program_init(pio, sm, offset, SER, RCLK, 3, 1);
 
     uint c = 0;
     while (true) {
         pio_sm_put_blocking(pio, sm, segments[c]);
-        sleep_ms(1000);
+        sleep_ms(10000);
         c = (c + 1) % 16;
     }
     

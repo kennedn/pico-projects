@@ -1,0 +1,30 @@
+.program rgb
+
+.wrap_target
+    out pins 4
+.wrap
+
+% c-sdk {
+static inline void rgb_program_init(PIO pio, uint sm, uint offset, uint bright_pin, uint green_pin, uint blue_pin, uint red_pin) {
+    
+    uint pin_mask =(1u << bright_pin) | (0u << red_pin) | (0u << green_pin) | (0u << blue_pin); 
+    uint pindir_mask =(1u << bright_pin) | (1u << red_pin) | (1u << green_pin) | (1u << blue_pin); 
+    pio_sm_set_pins_with_mask(pio, sm, pin_mask, pin_mask);
+    pio_sm_set_pindirs_with_mask(pio, sm, pindir_mask, pindir_mask);
+    pio_gpio_init(pio, bright_pin);
+    pio_gpio_init(pio, red_pin);
+    pio_gpio_init(pio, green_pin);
+    pio_gpio_init(pio, blue_pin);
+    gpio_set_outover(red_pin, GPIO_OVERRIDE_INVERT);
+    gpio_set_outover(green_pin, GPIO_OVERRIDE_INVERT);
+    gpio_set_outover(blue_pin, GPIO_OVERRIDE_INVERT);
+
+    pio_sm_config c = rgb_program_get_default_config(offset);
+    sm_config_set_out_pins(&c, bright_pin, 4);
+    sm_config_set_out_shift(&c, true, true, 4);
+    // Init the pio state machine with PC at offset
+    pio_sm_init(pio, sm, offset, &c);
+    // Start sm
+    pio_sm_set_enabled(pio, sm, true);
+}
+%}
