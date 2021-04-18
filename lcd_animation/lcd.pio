@@ -1,14 +1,14 @@
 .program lcd
 .side_set 2
 .wrap_target
-    set pindirs 0b10 side 0b10 // change DB7 to input; rs = out, DB7 = in, r/w = read, e = false 
-lcd_loop:
-    set pins 0b00 side 0b11 // set register select to 0, trigger busy flag read; rs = inst , DB7 = busy, r/w = read, e = true
-    jmp pin lcd_loop side 0b10  // loop if DB7 = 1 (busy); r/w = read, e = false
-    set pindirs 0b11 side 0b10 // else, change DB7 back to output; r/w = write, e = false
 lcd_write:
     out pins 9 side 0b00 // output rs + DB0-DB7 to pins; r/w = write, e = false
     nop side 0b01 // toggle enable, lcd reads asserted data; r/w = write, e = true
+    set pindirs 0b10 side 0b10 // change DB7 to input; rs = out, DB7 = in, r/w = read, e = false 
+busy_loop:
+    set pins 0b00 side 0b11 // set register select to 0, trigger busy flag read; rs = inst , DB7 = busy, r/w = read, e = true
+    jmp pin busy_loop side 0b10  // loop if DB7 = 1 (busy); r/w = read, e = false
+    set pindirs 0b11 side 0b10 // else, change DB7 back to output; r/w = write, e = false
 .wrap
 
 

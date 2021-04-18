@@ -6,7 +6,7 @@
 
 % c-sdk {
 static inline void rgb_program_init(PIO pio, uint sm, uint offset, uint bright_pin, uint green_pin, uint blue_pin, uint red_pin) {
-    
+    sleep_ms(100);
     uint pin_mask =(1u << bright_pin) | (0u << red_pin) | (0u << green_pin) | (0u << blue_pin); 
     uint pindir_mask =(1u << bright_pin) | (1u << red_pin) | (1u << green_pin) | (1u << blue_pin); 
     pio_sm_set_pins_with_mask(pio, sm, pin_mask, pin_mask);

@@ -19,6 +19,7 @@ add_subdirectory(multi_pio)
 add_subdirectory(uart)
 add_subdirectory(hello_pio)
 add_subdirectory(rgb_pio)
-add_subdirectory(lcd_pio)
+add_subdirectory(lcd_scroll)
+add_subdirectory(lcd_animation)
 
 

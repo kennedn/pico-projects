@@ -1,0 +1,47 @@
+.program lcd
+.side_set 2
+.wrap_target
+lcd_write:
+    out pins 9 side 0b00 // output rs + DB0-DB7 to pins; r/w = write, e = false
+    nop side 0b01 // toggle enable, lcd reads asserted data; r/w = write, e = true
+    set pindirs 0b10 side 0b10 // change DB7 to input; rs = out, DB7 = in, r/w = read, e = false 
+busy_loop:
+    set pins 0b00 side 0b11 // set register select to 0, trigger busy flag read; rs = inst , DB7 = busy, r/w = read, e = true
+    jmp pin busy_loop side 0b10  // loop if DB7 = 1 (busy); r/w = read, e = false
+    set pindirs 0b11 side 0b10 // else, change DB7 back to output; r/w = write, e = false
+.wrap
+
+
+% c-sdk {
+#include "hardware/clocks.h"
+static inline void lcd_program_init(PIO pio, uint sm, uint offset, uint base_pin, float freq_mhz) {
+    int mask = 0;
+    // enable, read_write, DB0 - DB7, register_select
+    for (int i=0; i < 11; i++) {
+        mask |= 1u << (base_pin + i);
+        pio_gpio_init(pio, base_pin + i);
+    } 
+    // Set all pins as output with inital values of 0
+    pio_sm_set_pindirs_with_mask(pio, sm, mask, mask);
+    pio_sm_set_pins_with_mask(pio, sm, mask, 0);
+
+    pio_sm_config c = lcd_program_get_default_config(offset);
+
+    sm_config_set_sideset_pins(&c, base_pin); // enable + read_write; .side_set 2
+    sm_config_set_out_pins(&c, base_pin + 2, 9); // DB0 - DB7 + register_select
+    sm_config_set_set_pins(&c, base_pin + 9, 2); // DB7 + register_select
+    sm_config_set_jmp_pin(&c, base_pin + 9); // DB7
+
+    // Stall on out instruction until 9 bits available (DB0 - DB7 + register_select)
+    sm_config_set_out_shift(&c, true, true, 9);
+
+    // I have no idea if this is an accurate way to set clock
+    float div = clock_get_hz(clk_sys) / (1000000 * freq_mhz);
+    sm_config_set_clkdiv(&c, div);
+
+    // Init the pio state machine with PC at offset
+    pio_sm_init(pio, sm, offset, &c);
+    // Start sm
+    pio_sm_set_enabled(pio, sm, true);
+}
+%}
