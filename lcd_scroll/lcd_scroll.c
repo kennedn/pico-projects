@@ -28,6 +28,19 @@ void seed_random_from_rosc()
 }
 
 typedef enum {
+    DATA_MASK = 0b100000000,
+    CGRAM_MASK = 0b001000000,
+    DDRAM_MASK = 0b010000000,
+
+    RETURN_HOME = 0b000000010,
+    SHIFT_LEFT = 0b000011000,
+    SHIFT_RIGHT = 0b000011100,
+    FUNC_SET = 0b000111000,   // 8 bit operation, 2 line mode, 5 x 8 font
+    CURSOR_SET = 0b000001100, // Display on, cursor on, cursor blink
+    SHIFT_SET =  0b000000110  // Set cursor right shift
+} commands;
+
+typedef enum {
     LEFT,
     CENTRE,
     RIGHT
@@ -60,7 +73,7 @@ uint align(char *buffer, char *string, alignment alignment) {
 // Write out a padded two line message to a 16 x 2 display
 void lcd_write_blocking(PIO pio, uint sm, char *line_1, char *line_2, alignment align_1, alignment align_2) {
     //
-    pio_sm_put_blocking(pio, sm, 0b000000010); // Return home (Cursor at position 0)
+    pio_sm_put_blocking(pio, sm, RETURN_HOME); // Return home (Cursor at position 0)
     if (!line_1 && !line_2) { return; }
     char line_buffer[40];
 
@@ -68,13 +81,13 @@ void lcd_write_blocking(PIO pio, uint sm, char *line_1, char *line_2, alignment 
     snprintf(line_buffer, 41, "%-40s", line_buffer); // Pad row 1 to 40 chars because row 2 starts at pos 41
     // Write each character in string to 16x2 display
     for(int i = 0; i < strlen(line_buffer); i++) {
-        pio_sm_put_blocking(pio, sm, 1u << 8 | line_buffer[i]); // register_select = 1 + data
+        pio_sm_put_blocking(pio, sm, DATA_MASK | line_buffer[i]); // register_select = 1 + data
     }
 
     align(line_buffer, line_2, align_2);
     snprintf(line_buffer, 41, "%-40s", line_buffer); // Pad string to 16 chars
     for(int i = 0; i < strlen(line_buffer); i++) {
-        pio_sm_put_blocking(pio, sm, 1u << 8 | line_buffer[i]); // register_select = 1 + data
+        pio_sm_put_blocking(pio, sm, DATA_MASK | line_buffer[i]); // register_select = 1 + data
     }
 }
 
@@ -108,26 +121,28 @@ int main() {
     // Get a free state machine and call our init function from lcd.pio header
     uint sm = pio_claim_unused_sm(pio, true);
     lcd_program_init(pio, sm, offset, 7, 1);
-    pio_sm_put_blocking(pio, sm, 0b000111000); // 8 bit operation, 2 line mode, 5 x 8 font
-    pio_sm_put_blocking(pio, sm, 0b000001100); // Display on, cursor on, cursor blink
-    pio_sm_put_blocking(pio, sm, 0b000000110); // Set cursor right shift
+    pio_sm_put_blocking(pio, sm, FUNC_SET);
+    pio_sm_put_blocking(pio, sm, CURSOR_SET); 
+    pio_sm_put_blocking(pio, sm, SHIFT_SET); 
 
 
-    // Starting at first CG offset will cause character 1 to be accessable at \0, which causes issues for string functons
-    // Quick hack is to lose a character and just start at offset 0x48 (\1)
     const uint patterns[4][8] = {{0xe, 0x10, 0x10, 0x1f, 0x1b, 0x1b, 0x1f, 0x0},  // Unlock
-                        {0xe, 0x11, 0x11, 0x1f, 0x1b, 0x1b, 0x1f, 0x0},  // Lock
-                        {0x0, 0xa, 0x1f, 0x1f, 0xe, 0x4, 0x0, 0x0},      // Heart
-                        {0x1f, 0x15, 0x1f, 0x1f, 0xe, 0xa, 0x1b, 0x0}};    // Guy
-    pio_sm_put_blocking(pio, sm, 0x48); // Point AC at CGRAM (character generator RAM)
+                        {0xe, 0x11, 0x11, 0x1f, 0x1b, 0x1b, 0x1f, 0x0},           // Lock
+                        {0x0, 0xa, 0x1f, 0x1f, 0xe, 0x4, 0x0, 0x0},               // Heart
+                        {0x1f, 0x15, 0x1f, 0x1f, 0xe, 0xa, 0x1b, 0x0}};           // Guy
+    
+    // Starting at first CG offset will cause character 1 to be accessable at \0, which causes issues for null terminated 
+    //string functions. Quick hack is to lose a character and just start at offset 8 (\1)
+    pio_sm_put_blocking(pio, sm, CGRAM_MASK | 8); // Point AC at CGRAM slot 1 (character generator RAM)
+
     // Write custom characters to LCD module, AC auto increments on each write
     for (int i = 0; i < count_of(patterns); i++) {
         for (int j = 0; j < count_of(patterns[i]); j ++) {
-            pio_sm_put_blocking(pio, sm, 1u << 8 | patterns[i][j]); // write each line of 5x8 character
+            pio_sm_put_blocking(pio, sm, DATA_MASK | patterns[i][j]); // write each line of 5x8 character
         }
     }
 
-    // pio_sm_put_blocking(pio, sm, 0b000000010); // Return Home
+    pio_sm_put_blocking(pio, sm, RETURN_HOME); // Set Address counter to DDRAM 0
 
     char *line_1_words[] = {"Stinky", "Radical", "Wholesome", "Hungis", "Chocolate", "Hugh", "Quantum", "Holy", "Ultimate", "Beefy"};
     char *line_2_words[] = {"Bepzinky", "Larry", "Rimbonski", "Bungo", "Mungus", "Rat", "Monke", "Goblin", "Beef Boy"};
@@ -158,11 +173,11 @@ int main() {
         printf("direction: %d\nline_1_pad: %d\nline_2_pad: %d\nmax_length: %d\n", direction, line_1_pad, line_2_pad, max_length);
         // Rotate to the edge of stage
         for (int i = 0; i < max_length; i ++) {
-            pio_sm_put_blocking(pio, sm, (direction) ? 0b000011000 : 0b000011100 );
+            pio_sm_put_blocking(pio, sm, (direction) ? SHIFT_LEFT : SHIFT_RIGHT );
         }
         // Rotate back through stage, sleeping each rotate
         for (int i = 0; i < 16  + max_length;  i ++) {
-            pio_sm_put_blocking(pio, sm, (direction) ? 0b000011100 : 0b000011000 ); 
+            pio_sm_put_blocking(pio, sm, (direction) ? SHIFT_RIGHT : SHIFT_LEFT ); 
             sleep_ms(200);
         }
     }

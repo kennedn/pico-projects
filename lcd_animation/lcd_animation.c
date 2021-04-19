@@ -28,6 +28,19 @@ void seed_random_from_rosc()
 }
 
 typedef enum {
+    DATA_MASK = 0b100000000,
+    CGRAM_MASK = 0b001000000,
+    DDRAM_MASK = 0b010000000,
+
+    RETURN_HOME = 0b000000010,
+    SHIFT_LEFT = 0b000011000,
+    SHIFT_RIGHT = 0b000011100,
+    FUNC_SET = 0b000111000,   // 8 bit operation, 2 line mode, 5 x 8 font
+    CURSOR_SET = 0b000001100, // Display on, cursor on, cursor blink
+    SHIFT_SET =  0b000000110  // Set cursor right shift
+} commands;
+
+typedef enum {
     LEFT,
     CENTRE,
     RIGHT
@@ -60,7 +73,7 @@ uint align(char *buffer, char *string, alignment alignment) {
 // Write out a padded two line message to a 16 x 2 display
 void lcd_write_blocking(PIO pio, uint sm, char *line_1, char *line_2, alignment align_1, alignment align_2) {
     //
-    pio_sm_put_blocking(pio, sm, 0b000000010); // Return home (Cursor at position 0)
+    pio_sm_put_blocking(pio, sm, RETURN_HOME); // Return home (Cursor at position 0)
     if (!line_1 && !line_2) { return; }
     char line_buffer[40];
 
@@ -68,29 +81,29 @@ void lcd_write_blocking(PIO pio, uint sm, char *line_1, char *line_2, alignment 
     snprintf(line_buffer, 41, "%-40s", line_buffer); // Pad row 1 to 40 chars because row 2 starts at pos 41
     // Write each character in string to 16x2 display
     for(int i = 0; i < strlen(line_buffer); i++) {
-        pio_sm_put_blocking(pio, sm, 1u << 8 | line_buffer[i]); // register_select = 1 + data
+        pio_sm_put_blocking(pio, sm, DATA_MASK | line_buffer[i]); // register_select = 1 + data
     }
 
     align(line_buffer, line_2, align_2);
     snprintf(line_buffer, 41, "%-40s", line_buffer); // Pad string to 16 chars
     for(int i = 0; i < strlen(line_buffer); i++) {
-        pio_sm_put_blocking(pio, sm, 1u << 8 | line_buffer[i]); // register_select = 1 + data
+        pio_sm_put_blocking(pio, sm, DATA_MASK | line_buffer[i]); // register_select = 1 + data
     }
 }
 
 void next_frame(PIO pio, uint sm, uint icons, uint lines, uint icon_array[][lines], uint line_2_break, uint wait_ms) {
-    pio_sm_put_blocking(pio, sm, 0x48); // Point AC at CGRAM (character generator RAM)
+    pio_sm_put_blocking(pio, sm, CGRAM_MASK | 8 ); // Point AC at CGRAM slot 1 (character generator RAM)
     
     // Write custom characters to LCD module, AC auto increments on each write
     for (int i = 0; i < icons; i++) {
         for (int j = 0; j < lines; j ++) {
-            pio_sm_put_blocking(pio, sm, 1u << 8 | icon_array[i][j]); // write each line of 5x8 character
+            pio_sm_put_blocking(pio, sm, DATA_MASK| icon_array[i][j]); // write each line of 5x8 character
         }
     }
-    pio_sm_put_blocking(pio, sm, 0x86); // Set AC to DDRAM character 6 
+    pio_sm_put_blocking(pio, sm, DDRAM_MASK | 6); // Set AC to DDRAM character 6 
     for (int i = 0; i < icons; i++) {
-        if (line_2_break && i == line_2_break) { pio_sm_put_blocking(pio, sm, 0xae); } // Set AC to DDRAM character 46}
-        pio_sm_put_blocking(pio, sm, 1u << 8 | i + 1);
+        if (line_2_break && i == line_2_break) { pio_sm_put_blocking(pio, sm, DDRAM_MASK | 46); } // Set AC to DDRAM character 46
+        pio_sm_put_blocking(pio, sm, DATA_MASK| i + 1);
     }
 
     sleep_ms(wait_ms);
@@ -126,19 +139,19 @@ int main() {
     // Get a free state machine and call our init function from lcd.pio header
     uint sm = pio_claim_unused_sm(pio, true);
     lcd_program_init(pio, sm, offset, 7, 1);
-    pio_sm_put_blocking(pio, sm, 0b000111000); // 8 bit operation, 2 line mode, 5 x 8 font
-    pio_sm_put_blocking(pio, sm, 0b000001100); // Display on, cursor on, cursor blink
-    pio_sm_put_blocking(pio, sm, 0b000000110); // Set cursor right shift
+    pio_sm_put_blocking(pio, sm, FUNC_SET); // 8 bit operation, 2 line mode, 5 x 8 font
+    pio_sm_put_blocking(pio, sm, CURSOR_SET); // Display on, cursor on, cursor blink
+    pio_sm_put_blocking(pio, sm, SHIFT_SET); // Set cursor right shift
     lcd_write_blocking(pio, sm, " ", " ", LEFT, LEFT); // Clear display
-    pio_sm_put_blocking(pio, sm, 0b000000010); // Return Home
+    pio_sm_put_blocking(pio, sm, RETURN_HOME); // Return Home
 
     while (true) {
 
-        uint coffee_f1[5][8] = {{0x0, 0x0, 0x0, 0x2, 0x2, 0x1, 0x1, 0x0},             // top left
+        uint coffee_f1[5][8] = {{0x0, 0x0, 0x0, 0x2, 0x2, 0x1, 0x1, 0x0},         // top left
                                 {0x0, 0x0, 0x0, 0x14, 0x14, 0xa, 0xa, 0x0},       // top centre
-                                {0x7, 0x7, 0x7, 0x7, 0x7, 0x3, 0x1, 0x0},          // bottom left
-                                {0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1e, 0x1c, 0x0},    // bottom centre
-                                {0x18, 0x4, 0x4, 0x18, 0x0, 0x0, 0x0, 0x0}};        // bottom right
+                                {0x7, 0x7, 0x7, 0x7, 0x7, 0x3, 0x1, 0x0},         // bottom left
+                                {0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1e, 0x1c, 0x0},  // bottom centre
+                                {0x18, 0x4, 0x4, 0x18, 0x0, 0x0, 0x0, 0x0}};      // bottom right
     
         uint coffee_f2[2][8] = {{0x0, 0x0, 0x0, 0x1, 0x1, 0x1, 0x1, 0x0},         // top left
                                   {0x0, 0x0, 0x0, 0xa, 0xa, 0xa, 0xa, 0x0}};      // top centre

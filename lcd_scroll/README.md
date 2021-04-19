@@ -1,0 +1,39 @@
+# LCD Scroll
+
+The following is an example program for a 16x2 generic LCD display. It does the following:
+
+- Write 4 custom icons to the displays CGRAM
+- Concatonate a random icon with a random word for each line
+- Write and position the constructed strings to the display
+- Scroll back through visible portion of screen
+  
+`lcd.pio` handles sending data to and from the LCD display. A busy flag check is implemented which means no delays are required when writing consecutive commands to the display.
+
+# Pinout
+
+| LCD | GPIO | Description     |
+|-----|------|-----------------|
+| 6   | 7    | Enable          | 
+| 5   | 8    | Read/Write      | 
+| 7   | 9    | DB0             | 
+| 8   | 10   | DB1             | 
+| 9   | 11   | DB2             | 
+| 10  | 12   | DB3             | 
+| 11  | 13   | DB4             | 
+| 12  | 14   | DB5             | 
+| 13  | 15   | DB6             | 
+| 14  | 16   | DB7             | 
+| 4   | 17   | Register Select | 
+
+# Schematic
+
+<img src="bb_schematic.png" width="600"/>
+
+# Notes
+
+## Instructions
+The example contains a subset of the possible commands accepted by the display, for a full list you should search out the HD44780U data sheet.
+
+## Known Issues
+
+Writing out the `Clear display` command  will **stall the display**. For whatever reason the display, at least in my case, will report a constant busy state, stalling the program. This can be worked around by issuing a `Return home` command instead and being careful to clear the display of residual characters when required.
