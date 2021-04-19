@@ -85,12 +85,13 @@ void lcd_write_blocking(PIO pio, uint sm, char *line_1, char *line_2, alignment 
     }
 
     align(line_buffer, line_2, align_2);
-    snprintf(line_buffer, 41, "%-40s", line_buffer); // Pad string to 16 chars
+    snprintf(line_buffer, 41, "%-40s", line_buffer); // Pad string to 40 chars too
     for(int i = 0; i < strlen(line_buffer); i++) {
         pio_sm_put_blocking(pio, sm, DATA_MASK | line_buffer[i]); // register_select = 1 + data
     }
 }
 
+// Write an icon set to CGRAM and then display each custom icon
 void next_frame(PIO pio, uint sm, uint icons, uint lines, uint icon_array[][lines], uint line_2_break, uint wait_ms) {
     pio_sm_put_blocking(pio, sm, CGRAM_MASK | 8 ); // Point AC at CGRAM slot 1 (character generator RAM)
     
@@ -100,10 +101,10 @@ void next_frame(PIO pio, uint sm, uint icons, uint lines, uint icon_array[][line
             pio_sm_put_blocking(pio, sm, DATA_MASK| icon_array[i][j]); // write each line of 5x8 character
         }
     }
-    pio_sm_put_blocking(pio, sm, DDRAM_MASK | 6); // Set AC to DDRAM character 6 
+    pio_sm_put_blocking(pio, sm, DDRAM_MASK | 6); // Set AC to DDRAM character 6 (middle screen line 1)
     for (int i = 0; i < icons; i++) {
-        if (line_2_break && i == line_2_break) { pio_sm_put_blocking(pio, sm, DDRAM_MASK | 46); } // Set AC to DDRAM character 46
-        pio_sm_put_blocking(pio, sm, DATA_MASK| i + 1);
+        if (line_2_break && i == line_2_break) { pio_sm_put_blocking(pio, sm, DDRAM_MASK | 46); } // Set AC to DDRAM character 46 (middle screen line 2)
+        pio_sm_put_blocking(pio, sm, DATA_MASK| i + 1); // write custom icon
     }
 
     sleep_ms(wait_ms);
@@ -139,30 +140,32 @@ int main() {
     // Get a free state machine and call our init function from lcd.pio header
     uint sm = pio_claim_unused_sm(pio, true);
     lcd_program_init(pio, sm, offset, 7, 1);
-    pio_sm_put_blocking(pio, sm, FUNC_SET); // 8 bit operation, 2 line mode, 5 x 8 font
-    pio_sm_put_blocking(pio, sm, CURSOR_SET); // Display on, cursor on, cursor blink
-    pio_sm_put_blocking(pio, sm, SHIFT_SET); // Set cursor right shift
+
+
+    // Initalise display
+    pio_sm_put_blocking(pio, sm, FUNC_SET); 
+    pio_sm_put_blocking(pio, sm, CURSOR_SET);
+    pio_sm_put_blocking(pio, sm, SHIFT_SET);
     lcd_write_blocking(pio, sm, " ", " ", LEFT, LEFT); // Clear display
-    pio_sm_put_blocking(pio, sm, RETURN_HOME); // Return Home
+    pio_sm_put_blocking(pio, sm, RETURN_HOME);
+
+    // Animation frame icon sets
+    uint coffee_f1[5][8] = {{0x0, 0x0, 0x0, 0x2, 0x2, 0x1, 0x1, 0x0},         // top left
+                            {0x0, 0x0, 0x0, 0x14, 0x14, 0xa, 0xa, 0x0},       // top centre
+                            {0x7, 0x7, 0x7, 0x7, 0x7, 0x3, 0x1, 0x0},         // bottom left
+                            {0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1e, 0x1c, 0x0},  // bottom centre
+                            {0x18, 0x4, 0x4, 0x18, 0x0, 0x0, 0x0, 0x0}};      // bottom right
+
+    uint coffee_f2[2][8] = {{0x0, 0x0, 0x0, 0x1, 0x1, 0x1, 0x1, 0x0},         // top left
+                                {0x0, 0x0, 0x0, 0xa, 0xa, 0xa, 0xa, 0x0}};      // top centre
+
+    uint coffee_f3[2][8] = {{0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x1, 0x0},         // top left
+                            {0x0, 0x0, 0x0, 0x15, 0x15, 0xa, 0xa, 0x0}};      // top centre
 
     while (true) {
-
-        uint coffee_f1[5][8] = {{0x0, 0x0, 0x0, 0x2, 0x2, 0x1, 0x1, 0x0},         // top left
-                                {0x0, 0x0, 0x0, 0x14, 0x14, 0xa, 0xa, 0x0},       // top centre
-                                {0x7, 0x7, 0x7, 0x7, 0x7, 0x3, 0x1, 0x0},         // bottom left
-                                {0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1e, 0x1c, 0x0},  // bottom centre
-                                {0x18, 0x4, 0x4, 0x18, 0x0, 0x0, 0x0, 0x0}};      // bottom right
-    
-        uint coffee_f2[2][8] = {{0x0, 0x0, 0x0, 0x1, 0x1, 0x1, 0x1, 0x0},         // top left
-                                  {0x0, 0x0, 0x0, 0xa, 0xa, 0xa, 0xa, 0x0}};      // top centre
-
-        uint coffee_f3[2][8] = {{0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x1, 0x0},         // top left
-                                {0x0, 0x0, 0x0, 0x15, 0x15, 0xa, 0xa, 0x0}};      // top centre
-        
         next_frame(pio, sm, 5, 8, coffee_f1, 2, 300);
         next_frame(pio, sm, 2, 8, coffee_f2, 0, 300);
         next_frame(pio, sm, 2, 8, coffee_f3, 0, 300);
         next_frame(pio, sm, 2, 8, coffee_f2, 0, 300);
-
     }
 }

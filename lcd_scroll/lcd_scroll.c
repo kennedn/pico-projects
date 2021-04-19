@@ -66,6 +66,7 @@ uint align(char *buffer, char *string, alignment alignment) {
         // Prepend spaces to string based on pad
         sprintf(buffer, "%*s%s", pad, "", string);
     } else {
+        // No buffer passed, just return pad
         return pad;
     }
 }
@@ -85,7 +86,7 @@ void lcd_write_blocking(PIO pio, uint sm, char *line_1, char *line_2, alignment 
     }
 
     align(line_buffer, line_2, align_2);
-    snprintf(line_buffer, 41, "%-40s", line_buffer); // Pad string to 16 chars
+    snprintf(line_buffer, 41, "%-40s", line_buffer); // Pad row 2 to 40 chars too
     for(int i = 0; i < strlen(line_buffer); i++) {
         pio_sm_put_blocking(pio, sm, DATA_MASK | line_buffer[i]); // register_select = 1 + data
     }
@@ -121,11 +122,13 @@ int main() {
     // Get a free state machine and call our init function from lcd.pio header
     uint sm = pio_claim_unused_sm(pio, true);
     lcd_program_init(pio, sm, offset, 7, 1);
+
+    // Initalise LCD module
     pio_sm_put_blocking(pio, sm, FUNC_SET);
     pio_sm_put_blocking(pio, sm, CURSOR_SET); 
     pio_sm_put_blocking(pio, sm, SHIFT_SET); 
 
-
+    // Custom 5x8 icons to send to module
     const uint patterns[4][8] = {{0xe, 0x10, 0x10, 0x1f, 0x1b, 0x1b, 0x1f, 0x0},  // Unlock
                         {0xe, 0x11, 0x11, 0x1f, 0x1b, 0x1b, 0x1f, 0x0},           // Lock
                         {0x0, 0xa, 0x1f, 0x1f, 0xe, 0x4, 0x0, 0x0},               // Heart
@@ -142,7 +145,7 @@ int main() {
         }
     }
 
-    pio_sm_put_blocking(pio, sm, RETURN_HOME); // Set Address counter to DDRAM 0
+    pio_sm_put_blocking(pio, sm, RETURN_HOME); // Set Address counter back to DDRAM
 
     char *line_1_words[] = {"Stinky", "Radical", "Wholesome", "Hungis", "Chocolate", "Hugh", "Quantum", "Holy", "Ultimate", "Beefy"};
     char *line_2_words[] = {"Bepzinky", "Larry", "Rimbonski", "Bungo", "Mungus", "Rat", "Monke", "Goblin", "Beef Boy"};
