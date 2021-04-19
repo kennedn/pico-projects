@@ -129,7 +129,8 @@ int main() {
 
     // pio_sm_put_blocking(pio, sm, 0b000000010); // Return Home
 
-    char *words[] = {"Bepzinky", "Roblox", "Wholesome", "Bungo", "Mungus", "Hugh", "Tummy rumbles", "Monke", "Rapscallion", "Beefaroni"};
+    char *line_1_words[] = {"Stinky", "Radical", "Wholesome", "Hungis", "Chocolate", "Hugh", "Quantum", "Holy", "Ultimate", "Beefy"};
+    char *line_2_words[] = {"Bepzinky", "Larry", "Rimbonski", "Bungo", "Mungus", "Rat", "Monke", "Goblin", "Beef Boy"};
     char *customs[] = {"\1", "\2", "\3", "\4"};
     char line_1[40], line_2[40];
 
@@ -142,10 +143,10 @@ int main() {
     while(true) {
         icon = rand() % count_of(customs);  // Pick a random icon for line
         // Concat an icon on either side of random word
-        snprintf(line_1, 41, "%s %s %s", customs[icon], words[rand() % count_of(words)], customs[icon]); 
+        snprintf(line_1, 41, "%s %s %s", customs[icon],line_1_words[rand() % count_of(line_1_words)], customs[icon]); 
 
         icon = rand() % count_of(customs);
-        snprintf(line_2, 41, "%s %s %s", customs[icon], words[rand() % count_of(words)], customs[icon]);
+        snprintf(line_2, 41, "%s %s %s", customs[icon], line_2_words[rand() % count_of(line_2_words)], customs[icon]);
 
         direction = !direction;
         // write lines to centre stage on LCD
