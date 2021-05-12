@@ -45,16 +45,18 @@ end_pulse:
 
 % c-sdk {
 #include "hardware/clocks.h"
-static inline void nec_program_init(PIO pio, uint sm, uint offset, uint pin) {
+static inline void nec_program_init(PIO pio, uint sm, uint offset, uint pin, bool invert) {
     pio_sm_config c = nec_program_get_default_config(offset);
     sm_config_set_sideset_pins(&c, pin);
     pio_gpio_init(pio, pin);
     pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, true);
+    pio_sm_set_pins_with_mask(pio, sm, 1u << pin, 0);
     // Calculate a clock divider from passed frequency, *1000000 to convert from Mhz to hz and *2 because there are 2 asm instructions
     float div = clock_get_hz(clk_sys) / (38000 * 2);
     sm_config_set_clkdiv(&c, div);
     sm_config_set_out_shift(&c, true, false, 32);
 
+    if (invert) { gpio_set_outover(pin, GPIO_OVERRIDE_INVERT); }
     // Init the pio state machine with PC at offset
     pio_sm_init(pio, sm, offset, &c);
     // Start sm

@@ -1,5 +1,5 @@
 #include <stdio.h>
-
+#include <stdlib.h>
 #include "pico/stdlib.h"
 #include "hardware/pio.h"
 #include "nec.pio.h"
@@ -9,6 +9,7 @@
 #define R6(n) R4(n), R4(n + 2*4 ), R4(n + 1*4 ), R4(n + 3*4 )
 #define REVERSE_BITS R6(0), R6(2), R6(1), R6(3)
  
+#define LED PICO_DEFAULT_LED_PIN
 // lookup table to store the reverse of each index of the table.
 // The macro `REVERSE_BITS` generates the table
 unsigned int lookup[256] = { REVERSE_BITS };
@@ -25,20 +26,28 @@ int main() {
     stdio_init_all();
     PIO pio = pio0;
     uint nec_offset = pio_add_program(pio, &nec_program);
-    nec_program_init(pio, 0 , nec_offset, 15);
+    nec_program_init(pio, 0 , nec_offset, 15, true);
+    nec_program_init(pio, 1 , nec_offset, LED, false);
+
+    getchar();
+    char hex_string[9];
+    int i, chr, hex_code;
     while (true) {
-        // printf("hello");
-        // printf("Normal:%d\nReversed:%d\n",0x00ff02fd, reverseBits(0x00ff02fd));
-        // pio_sm_put_blocking(pio, 0, 0xBF40FF00);
-        // uint value;
-        // scanf("%x", &value);
-        pio_sm_put_blocking(pio, 0, reverseBits(0xff1ae5)); // Red
-        sleep_ms(1000);
-        pio_sm_put_blocking(pio, 0, reverseBits(0xff9a65)); // Green
-        sleep_ms(1000);
-        pio_sm_put_blocking(pio, 0, reverseBits(0xffa25d)); // Blue
-        sleep_ms(1000);
-        pio_sm_put_blocking(pio, 0, reverseBits(0xff22dd)); // White
-        sleep_ms(1000);
+        i = 0;
+        chr = 0;
+        hex_code = 0;
+        while ((chr = getchar()) != '\r' && chr != EOF) {
+            if (i >= count_of(hex_string)) { break; }
+            hex_string[i++] = chr;
+        }
+
+        if (i >= count_of(hex_string)) { continue; }
+        
+        hex_string[i] = '\0';
+        if ((hex_code = (int)strtol(hex_string, NULL, 16))) {
+            printf("OK\r\n"); 
+            pio_sm_put_blocking(pio, 0, reverseBits(hex_code));
+            pio_sm_put_blocking(pio, 1, reverseBits(hex_code));
+        } else { printf("NG\r\n"); }
     }
 }
