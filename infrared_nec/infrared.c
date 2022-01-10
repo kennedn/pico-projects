@@ -26,28 +26,25 @@ int main() {
     stdio_init_all();
     PIO pio = pio0;
     uint nec_offset = pio_add_program(pio, &nec_program);
-    nec_program_init(pio, 0 , nec_offset, 15, true);
+    nec_program_init(pio, 0 , nec_offset, 20, false);
     nec_program_init(pio, 1 , nec_offset, LED, false);
 
     getchar();
-    char hex_string[9];
-    int i, chr, hex_code;
+    const int length = 9;
+    char hex_string[length];
     while (true) {
-        i = 0;
-        chr = 0;
-        hex_code = 0;
+        int i = 0, chr = 0, hex_code = 0;
         while ((chr = getchar()) != '\r' && chr != EOF) {
-            if (i >= count_of(hex_string)) { break; }
-            hex_string[i++] = chr;
+            if (i++ >= length - 1) { continue; }
+            hex_string[i-1] = chr;
         }
-
-        if (i >= count_of(hex_string)) { continue; }
-        
-        hex_string[i] = '\0';
-        if ((hex_code = (int)strtol(hex_string, NULL, 16))) {
-            printf("OK\r\n"); 
-            pio_sm_put_blocking(pio, 0, reverseBits(hex_code));
-            pio_sm_put_blocking(pio, 1, reverseBits(hex_code));
+        if (i < length) {
+            hex_string[i] = '\0';
+            if ((hex_code = (int)strtol(hex_string, NULL, 16))) {
+                printf("OK\r\n"); 
+                pio_sm_put_blocking(pio, 0, reverseBits(hex_code));
+                pio_sm_put_blocking(pio, 1, reverseBits(hex_code));
+            } else { printf("NG\r\n"); }
         } else { printf("NG\r\n"); }
     }
 }

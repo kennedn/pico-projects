@@ -56,7 +56,12 @@ static inline void nec_program_init(PIO pio, uint sm, uint offset, uint pin, boo
     sm_config_set_clkdiv(&c, div);
     sm_config_set_out_shift(&c, true, false, 32);
 
-    if (invert) { gpio_set_outover(pin, GPIO_OVERRIDE_INVERT); }
+    if (invert) { 
+        gpio_set_outover(pin, GPIO_OVERRIDE_INVERT);
+        gpio_pull_up(pin);
+    } else {
+        gpio_pull_down(pin);
+    }
     // Init the pio state machine with PC at offset
     pio_sm_init(pio, sm, offset, &c);
     // Start sm

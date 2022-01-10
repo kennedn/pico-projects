@@ -4,6 +4,9 @@
 #define LED PICO_DEFAULT_LED_PIN
 
 int main() {
+    // stdio_uart_init_full(uart1, 6, 7, 9600);
+    // stdio_uart_init();
+    stdio_init_all();
     gpio_init(LED);
     gpio_set_dir(LED, GPIO_OUT);
 
