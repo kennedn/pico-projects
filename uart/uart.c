@@ -23,6 +23,6 @@ int main() {
                 printf("\nPlease enter 1 or 0");
                 break; 
         }
-        sleep_ms(100);
+        sleep_ms(3000);
     }
 }

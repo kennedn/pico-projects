@@ -22,7 +22,7 @@
 static uint reverse_lookup[] = { 0x0, 0x4, 0x2, 0x6, 0x1, 0x5, 0x3, 0x7 };
 
 int reverseCode(int code) {
-    return reverse_lookup[n & 0xff] 
+    return reverse_lookup[code & 0xff];
 }
 
 uint create_mask(uint bright, uint rgb) {

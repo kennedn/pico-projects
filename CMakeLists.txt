@@ -21,6 +21,7 @@ add_subdirectory(hello_pio)
 add_subdirectory(rgb_pio)
 add_subdirectory(lcd_scroll)
 add_subdirectory(lcd_animation)
+add_subdirectory(dht22)
 add_subdirectory(infrared_nec)
 
 
