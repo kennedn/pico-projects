@@ -14,7 +14,7 @@ busy_loop:
 
 % c-sdk {
 #include "hardware/clocks.h"
-static inline void lcd_program_init(PIO pio, uint sm, uint offset, uint base_pin, float freq_mhz) {
+static inline void lcd_program_init(PIO pio, uint sm, uint offset, uint base_pin, float freq_khz) {
     int mask = 0;
     // enable, read_write, DB0 - DB7, register_select
     for (int i=0; i < 11; i++) {
@@ -36,7 +36,7 @@ static inline void lcd_program_init(PIO pio, uint sm, uint offset, uint base_pin
     sm_config_set_out_shift(&c, true, true, 9);
 
     // I have no idea if this is an accurate way to set clock
-    float div = clock_get_hz(clk_sys) / (1000000 * freq_mhz);
+    float div = clock_get_hz(clk_sys) / (1000 * freq_khz);
     sm_config_set_clkdiv(&c, div);
 
     // Init the pio state machine with PC at offset

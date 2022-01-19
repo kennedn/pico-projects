@@ -1,5 +1,6 @@
 {
     "files.associations": {
-        "*.pio": "c"
+        "*.pio": "c",
+        "clocks.h": "c"
     }
 }

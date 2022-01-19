@@ -1,15 +1,22 @@
-# LCD Scroll
+# DHT22
 
-The following is an example program for a 16x2 generic LCD display. It does the following:
+This project is an amalgamation of my other 16x2 LCD projects with the addition of a DHT22 temperature / humidity sensor driver. It does the following:
 
-- Write 4 custom icons to the displays CGRAM
-- Concatonate a random icon with a random word for each line
-- Write and position the constructed strings to the display
-- Scroll back through visible portion of screen
-  
+- Queries the DHT22 sensor and converts sensor data to a readable format
+- Displays said data on a generic 16x2 LCD display
+- Listens for requests on the UART and returns current data based on request 
+
+# Components
+
 `lcd.pio` handles sending data to and from the LCD display. A busy flag check is implemented which means no delays are required when writing consecutive commands to the display.
 
-# Pinout
+`dht22.pio` handles data requests and retrievals from the DHT22 module. Fifo joining is utilised to simplify the program loop at the cost of having to trigger subsequent runs via a jump instruction.
+
+`dht22.h` is a simple wrapper library that triggers sensor retrieval and fills a provided buffer with data
+
+`lcd.h` is a wrapper library that aligns and writes strings to the LCD module
+
+# LCD Pinout
 
 | LCD | GPIO | Description     |
 |-----|------|-----------------|
@@ -37,7 +44,3 @@ As pictured, a 2k2 resistor from GPIO16 to GND and a 1k resistor from GPIO16 to 
 
 ## Instructions
 The example contains a subset of the possible commands accepted by the display, for a full list you should search out the HD44780U data sheet.
-
-## Known Issues
-
-Writing out the `Clear display` command  will **stall the display**. For whatever reason the display, at least in my case, will report a constant busy state, stalling the program. This can be worked around by issuing a `Return home` command instead and being careful to clear the display of residual characters when required.

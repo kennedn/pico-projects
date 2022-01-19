@@ -40,6 +40,7 @@ int main() {
         }
         if (i < length) {
             hex_string[i] = '\0';
+            printf(hex_string);
             if ((hex_code = (int)strtol(hex_string, NULL, 16))) {
                 printf("OK\r\n"); 
                 pio_sm_put_blocking(pio, 0, reverseBits(hex_code));
