@@ -16,6 +16,10 @@ This project is an amalgamation of my other 16x2 LCD projects with the addition 
 
 `lcd.h` is a wrapper library that aligns and writes strings to the LCD module
 
+# Schematic
+
+<img src="bb_schematic.png" width="600"/>
+
 # LCD Pinout
 
 | LCD | GPIO | Description     |
@@ -32,9 +36,6 @@ This project is an amalgamation of my other 16x2 LCD projects with the addition 
 | 14  | 16   | DB7             | 
 | 4   | 17   | Register Select | 
 
-# Schematic
-
-<img src="bb_schematic.png" width="600"/>
 
 # Notes
 ## Voltage divider
