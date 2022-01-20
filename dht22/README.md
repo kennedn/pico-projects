@@ -16,8 +16,20 @@ Currently the serial console listens for two commands. Commands must be sent wit
 
 |Command| Example response |Description|
 |-------|------------------|-----------|
-|tmp    |25.1              |Last temperature reading|
-|hum    |37.9              |Last humidity reading|
+|`TMP`    |OK25.1              |Last temperature reading|
+|`HUM`    |SE37.9              |Last humidity reading|
+
+The response provided by the pico conforms to the following format:
+
+`XXYY.Y`
+
+Where `YY.Y` is the last successful reading taken from the sensor and `XX` is one of the following status codes:
+
+|Code|`YY.Y` inline |Description|
+|----|------------|-----------|
+|OK  |Yes         |Okay, the last communication attempt with the DHT22 module was successful|
+|SE  |Yes         |Sensor error, the last communication attempt with the DH22 module failed|
+|BR  |No          |Bad request, the serial command was not recognised|
 
 # Software Components
 

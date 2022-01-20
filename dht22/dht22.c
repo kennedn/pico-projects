@@ -32,12 +32,14 @@ bool dht_get(DHTReading *reading_buffer) {
 
     if(((data[0] + data[1] + data[2] + data[3]) & 0xFF) != data[4] || data[4] == 0) {
         dht_reset_sm();
+        reading_buffer->status = 1;
         return false;
     }
 
     reading_buffer->humidity = (data[0] << 8 | data[1]) * 0.1;
     // First bit of data[2] must be treated as a positive / negative flag
     reading_buffer->temperature = ((data[2] & 0x80) ? -1 : 1) * ((data[2] & 0x7F) << 8 | data[3]) * 0.1;
+    reading_buffer->status = 0;
     return true;
 }
 
