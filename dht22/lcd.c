@@ -60,7 +60,7 @@ static void s_lcd_write_icons() {
     for (int i = 0; i < count_of(s_lcd_icons); i++) {
         pio_sm_put_blocking(s_pio, s_sm, LCD_DATA_MASK | s_lcd_icons[i]); // write each line of 5x8 character
     }
-    pio_sm_put(s_pio, s_sm, LCD_RETURN_HOME); // Set Address counter back to DDRAM
+    pio_sm_put_blocking(s_pio, s_sm, LCD_RETURN_HOME); // Set Address counter back to DDRAM
 }
 
 
@@ -86,7 +86,9 @@ void lcd_init(LCDAlignment alignment) {
     s_offset = pio_add_program(s_pio, &lcd_program);
     s_sm = pio_claim_unused_sm(s_pio, true);
 
-    lcd_program_init(s_pio, s_sm, s_offset, 7, 900);
+    // 1602m module needs clocked quite low (100khz) when D7 is in a voltage divider due to rise and fall times being atrocious
+    // The pio program has been shown to run fine at up to around 1Mhz when not in a makeshift voltage divider
+    lcd_program_init(s_pio, s_sm, s_offset, 7, 100);
 
     // Initalise LCD module
     pio_sm_put_blocking(s_pio, s_sm, LCD_FUNC_SET);
