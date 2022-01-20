@@ -60,7 +60,7 @@ void core1_main() {
 
         while (true) {
             if(queue_try_remove(&float_queue, &f)) {
-                printf("%f\n", f);
+                printf("%.1f\n", f);
             }
             chr = getchar_timeout_us(0);
             if (chr == PICO_ERROR_TIMEOUT) {continue;}

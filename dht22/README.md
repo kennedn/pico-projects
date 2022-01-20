@@ -6,7 +6,20 @@ This project is an amalgamation of my other 16x2 LCD projects with the addition 
 - Displays said data on a generic 16x2 LCD display
 - Listens for requests on the UART and returns current data based on request 
 
-# Components
+
+
+<img src="media/dht22_img.jpg" width="600"/>
+
+# Serial usage
+
+Currently the serial console listens for two commands. Commands must be sent with a trailing `\r` to be recognised by the program, some serial terminals send this character by default:
+
+|Command| Example response |Description|
+|-------|------------------|-----------|
+|tmp    |25.1              |Last temperature reading|
+|hum    |37.9              |Last humidity reading|
+
+# Software Components
 
 `lcd.pio` handles sending data to and from the LCD display. A busy flag check is implemented which means no delays are required when writing consecutive commands to the display.
 
@@ -16,9 +29,23 @@ This project is an amalgamation of my other 16x2 LCD projects with the addition 
 
 `lcd.h` is a wrapper library that aligns and writes strings to the LCD module
 
-# LCD Pinout
+# Hardware Components
 
-| LCD | GPIO | Description     |
+- 1602m generic 16x2 LCD module
+- HC-06 bluetooth serial module
+- DHT22* temperature / humidity monitor
+
+*NOTE: If DHT22 does not come attached to a board then the module must have a 10kΩ resistor between vcc and data pins.
+
+# Pico connections
+<table>
+<tr>
+    <th>LCD</th><th>HC-06</th><th>DHT22</th>
+</tr>
+<tr>
+<td style='vertical-align: top;'>
+
+| Module | GPIO | Description  |
 |-----|------|-----------------|
 | 6   | 7    | Enable          | 
 | 5   | 8    | Read/Write      | 
@@ -32,15 +59,35 @@ This project is an amalgamation of my other 16x2 LCD projects with the addition 
 | 14  | 16   | DB7             | 
 | 4   | 17   | Register Select | 
 
+</td>
+<td style='vertical-align: top;'>
+
+|Module|GPIO| 
+|--|--|
+|txd|2|
+|rxd|1|
+
+</td>
+<td style='vertical-align: top;'>
+
+| Module | GPIO |
+|-----|------|
+| data   | 6    |
+
+</td>
+
+</tr>
+</table>
+
+
 # Schematic
 
-<img src="bb_schematic.png" width="600"/>
+<img src="media/dht22_schematic.svg" width="600"/>
 
 # Notes
 ## Voltage divider
-The Raspberry Pi Pico is a 3v3 device. The generic LCD module I used in this build is rated for 5v. This isn't a problem when we are outputting to the LCD module but DB7 is an exception as it becomes an input when reading the busy flag. 
+The Raspberry Pi Pico is a 3v3 device. As shown in the schematic the dht22 and hc-06 modules run absolutely fine on 3.3v. 
 
-As pictured, a 2k2 resistor from GPIO16 to GND and a 1k resistor from GPIO16 to LCD14 brings the voltage down to a safe level.
+However the generic LCD module used in this build is rated for 5v. This isn't a problem when we are outputting to the LCD module as it is tolerant of 3v3 signals but DB7 is a problem as it becomes an input when reading the busy flag. 
 
-## Instructions
-The example contains a subset of the possible commands accepted by the display, for a full list you should search out the HD44780U data sheet.
+To mitigate this a voltage divider is added between DB7 and GPIO16, pictured above. A 2k2 resistor from GPIO16 to GND and a 1k resistor from GPIO16 to DB7 (LCD pin 14) brings the voltage down to a safe level.

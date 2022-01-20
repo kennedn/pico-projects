@@ -18,7 +18,7 @@ static void dht_reset_sm() {
 bool dht_get(DHTReading *reading_buffer) {
     static uint32_t data[5];
     
-    // Restart execution of dht pio block, causing a read from dht21
+    // Restart execution of dht pio block, causing a read from dht22
     if(s_enabled) {
         pio_sm_exec(s_pio, s_sm, pio_encode_jmp(s_offset));
     } else {
@@ -36,9 +36,8 @@ bool dht_get(DHTReading *reading_buffer) {
     }
 
     reading_buffer->humidity = (data[0] << 8 | data[1]) * 0.1;
-        // First bit of data[2] must be treated as a positive / negative flag
+    // First bit of data[2] must be treated as a positive / negative flag
     reading_buffer->temperature = ((data[2] & 0x80) ? -1 : 1) * ((data[2] & 0x7F) << 8 | data[3]) * 0.1;
-    // Checksum not ok
     return true;
 }
 
