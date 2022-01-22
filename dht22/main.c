@@ -42,19 +42,16 @@ static void queued_sleep_ms(DHTReading *reading, uint32_t ms) {
 //! Core one main loop, performs serial input / output
 void core1_main() {
     stdio_init_all();
-    static char buffer[10];
-    static const uint buffer_length = count_of(buffer);
-	static char command[5];
+	static char command[4];
+    static const uint command_length = count_of(command);
 	static int chr;
 	static uint i;
     static RequestType req = REQUEST_NONE;
     static ResponseType resp;
     getchar();
-	while(1)
-	{
+	while (true) {
         i = 0; chr = 0;
-        memset(command, 0, sizeof(command));
-        memset(buffer, 0, sizeof(buffer));
+        command[0] = '\0';
 
         while (true) {
             if(queue_try_remove(&response_queue, &resp)) {
@@ -67,22 +64,28 @@ void core1_main() {
                         break;
                 }
             }
-            chr = getchar_timeout_us(0);
-            if (chr == PICO_ERROR_TIMEOUT) {continue;}
+            if ((chr = getchar_timeout_us(0)) == PICO_ERROR_TIMEOUT) {continue;}
             if(chr == '\r' || chr == EOF) {break;}
-            if (i++ >= buffer_length - 1) {continue;}
-            buffer[i-1] = chr;
+            if (i++ >= command_length - 1) {continue;}
+            command[i-1] = chr;
         }
 
-        if (i >= buffer_length) {continue;}
-		if (sscanf(buffer, "%4s", command) <= 0) {continue;}
-		for(int i = 0; command[i]; i++){
+        if (i == 0) {continue;}
+        if (i >= command_length) {
+            printf("BR\n");
+            continue;
+        } 
+        
+		for(int i = 0; i < 3; i++){
   			command[i] = tolower(command[i]);
 		}
+        command[i] = '\0';
 
-		if (!strcmp(command, "tmp")) {req = REQUEST_TEMPERATURE;}
-		else if (!strcmp(command, "hum")) {req = REQUEST_HUMIDITY;}
-        else {
+		if (!strcmp(command, "tmp")) {
+            req = REQUEST_TEMPERATURE;
+        } else if (!strcmp(command, "hum")) {
+            req = REQUEST_HUMIDITY;
+        } else {
             printf("BR\n");
             continue;
         }
@@ -93,14 +96,14 @@ void core1_main() {
 int main() {
     queue_init(&request_queue, sizeof(RequestType), 5);
     queue_init(&response_queue, sizeof(ResponseType), 5);
-    multicore_launch_core1(core1_main);
+    static DHTReading reading = (DHTReading){.humidity = 0, .temperature = 0, .status = 1};
+    static char temp_str[40], hum_str[40];
+    uint32_t data[5];
 
+    multicore_launch_core1(core1_main);
     lcd_init(LCD_ALIGN_CENTRE);
     dht_init();
 
-    static char temp_str[40], hum_str[40];
-    static DHTReading reading = (DHTReading){.humidity = 0, .temperature = 0, .status = 1};
-    uint32_t data[5];
     while (true) {
         // Checksum not ok
         if(!dht_get(&reading)) {

@@ -103,3 +103,7 @@ The Raspberry Pi Pico is a 3v3 device. As shown in the schematic the dht22 and h
 However the generic LCD module used in this build is rated for 5v. This isn't a problem when we are outputting to the LCD module as it is tolerant of 3v3 signals but DB7 is a problem as it becomes an input when reading the busy flag. 
 
 To mitigate this a voltage divider is added between DB7 and GPIO16, pictured above. A 2k2 resistor from GPIO16 to GND and a 1k resistor from GPIO16 to DB7 (LCD pin 14) brings the voltage down to a safe level.
+
+# Acknowledgements
+
+PIOASM code for the DHT22 module is based on a micropython project by Harry Fairhead & Mike James, blog post is [here](https://www.i-programmer.info/programming/hardware/14572-the-pico-in-micropython-a-pio-driver-for-the-dht22.html) and check out their book [here](https://www.amazon.com/dp/1871962692?&linkCode=ll1&tag=iprog-20&linkId=d8520a10fda9eab0078c76bd3f066f14&language=en_US&ref_=as_li_ss_tl)!
