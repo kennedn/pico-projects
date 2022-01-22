@@ -1,5 +1,7 @@
 # LCD Scroll
 
+<img src='media/scroll.gif' width=400;>
+
 The following is an example program for a 16x2 generic LCD display. It does the following:
 
 - Write 4 custom icons to the displays CGRAM

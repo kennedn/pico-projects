@@ -1,5 +1,7 @@
 # LCD Animation
 
+<img src='media/animation.gif' width=400;>
+
 The following is an example program for a 16x2 generic LCD display. It does the following:
 
 - Write a multi-character icon set to the displays CGRAM
