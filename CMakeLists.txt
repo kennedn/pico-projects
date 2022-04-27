@@ -24,5 +24,5 @@ add_subdirectory(lcd_scroll)
 add_subdirectory(lcd_animation)
 add_subdirectory(dht22)
 add_subdirectory(infrared_nec)
-
+add_subdirectory(asm_experiments)
 
