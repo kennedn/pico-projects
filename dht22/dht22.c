@@ -48,5 +48,5 @@ void dht_init() {
     s_offset = pio_add_program(s_pio, &dht22_program);
     s_sm = pio_claim_unused_sm(s_pio, true);
     s_enabled = false;
-    dht22_program_init(s_pio, s_sm, s_offset, 6);
+    dht22_program_init(s_pio, s_sm, s_offset, 15);
 }

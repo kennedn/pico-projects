@@ -2,7 +2,7 @@
 #include "pico/multicore.h"
 #include "pico/util/queue.h"
 #include "hardware/pio.h"
-#include "lcd.h"
+// #include "lcd.h"
 #include "dht22.h"
 #include <stdio.h>
 #include <string.h>
@@ -101,20 +101,20 @@ int main() {
     uint32_t data[5];
 
     multicore_launch_core1(core1_main);
-    lcd_init(LCD_ALIGN_CENTRE);
+    // lcd_init(LCD_ALIGN_CENTRE);
     dht_init();
 
     while (true) {
         // Checksum not ok
         if(!dht_get(&reading)) {
-            lcd_write_blocking("\1 ?", "\2 ?");
+            // lcd_write_blocking("\1 ?", "\2 ?");
             queued_sleep_ms(&reading, 1000);
             continue;
         }
         
         snprintf(temp_str, 40, "%s %.01f%sC","\1", reading.temperature, "\xdf"); 
         snprintf(hum_str, 40, "%s %.01f %s", "\2", reading.humidity, "\x25"); 
-        lcd_write_blocking(temp_str, hum_str);
+        // lcd_write_blocking(temp_str, hum_str);
         queued_sleep_ms(&reading, 1000);
     }
 

@@ -1,7 +1,7 @@
 #include "pico/stdlib.h"
 #include <stdio.h>
 
-#define LED PICO_DEFAULT_LED_PIN
+#define LED 16
 
 int main() {
     // stdio_uart_init_full(uart1, 6, 7, 9600);

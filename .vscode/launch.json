@@ -6,13 +6,10 @@
             "type":"cortex-debug",
             "cwd": "${workspaceRoot}",
             "executable": "${command:cmake.launchTargetPath}",
-            //"preLaunchTask": "pico install ${command:cmake.launchTargetPath}",
             "request": "launch",
             "servertype": "external",
-            // This may need to be arm-none-eabi-gdb depending on your system
             "gdbPath" : "gdb-multiarch",
-            // Connect to an already running OpenOCD instance
-            "gdbTarget": "auxpi.int:3333",
+            "gdbTarget": "pizero.int:3333",
             "svdFile": "${env:PICO_SDK_PATH}/src/rp2040/hardware_regs/rp2040.svd",
             "runToMain": true,
             // Work around for stopping at main on restart
@@ -20,24 +17,6 @@
                 "break main",
                 "continue"
             ]
-        },
-        {
-            "name": "Pico Run",
-            "type": "cortex-debug",
-            "cwd": "${workspaceRoot}",
-            "preLaunchTask": "pico install ${command:cmake.launchTargetPath}",
-            "request": "launch",
-            // "servertype": "external",
-            // // This may need to be arm-none-eabi-gdb depending on your system
-            // "gdbPath" : "gdb-multiarch",
-            // // Connect to an already running OpenOCD instance
-            // "gdbTarget": "auxpi.int:3333",
-            // "svdFile": "${env:PICO_SDK_PATH}/src/rp2040/hardware_regs/rp2040.svd",
-            // "runToEntryPoint": "main",
-            // "postRestartCommands": [
-            //     "break main",
-            //     "continue"
-            // ],
         }
     ]
 }
