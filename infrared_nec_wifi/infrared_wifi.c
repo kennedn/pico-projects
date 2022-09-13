@@ -63,7 +63,8 @@ PIO pio;
 // lookup table to store the reverse of each index of the table.
 // The macro `REVERSE_BITS` generates the table
 unsigned int lookup[256] = { REVERSE_BITS };
- 
+uint32_t rgb_mask = 1 << 17 | 1 << 18 | 1 << 19;
+uint32_t rgb_base_pin = 17;
 // Function to reverse bits of `n` using a lookup table
 int reverseBits(int n) {
     return lookup[n & 0xff] << 24 |                // consider the first 8 bits
@@ -276,15 +277,46 @@ void tcp_server_process_recv_data(void *arg, struct tcp_pcb *tpcb) {
         if (state->message_body->code != -1) {
             int json_body_len = sprintf(json_body, "{\"status\": \"OK\"}\n");
             state->payload_len = sprintf((char*)state->buffer_send, "HTTP/1.1 200 OK\r\nContent-Length: %d\r\n\r\n%s", json_body_len, json_body);
+            
             pio_sm_put_blocking(pio, 0, reverseBits(state->message_body->code));
         } else {
             int json_body_len = sprintf(json_body, "{\"message\": \"Code variable required\"}\n");
             state->payload_len = sprintf((char*)state->buffer_send, "HTTP/1.1 400 Bad Request\r\nContent-Length: %d\r\n\r\n%s", json_body_len, json_body);
         }
+    } else if (state->message_body->method == HTTP_METHOD_GET && 
+        state->message_body->version == HTTP_VERSION_1_1 &&
+        !strcmp(state->message_body->url, "/status")) {
+        int json_body_len = 0;
+        while (json_body_len == 0) {
+            uint32_t gpio = (gpio_get_all() & rgb_mask) >> rgb_base_pin;
+
+            switch(gpio) {
+                case 0b110: // red
+                    json_body_len = sprintf(json_body, "{\"status\": \"off\"}\n");
+                    break;
+                case 0b100: // yellow
+                    json_body_len = sprintf(json_body, "{\"status\": \"optical\"}\n");
+                    break;
+                case 0b000: // white
+                    json_body_len = sprintf(json_body, "{\"status\": \"aux\"}\n");
+                    break;
+                case 0b101: // green
+                    json_body_len = sprintf(json_body, "{\"status\": \"line-in\"}\n");
+                    break;
+                case 0b011: // blue
+                    json_body_len = sprintf(json_body, "{\"status\": \"bluetooth\"}\n");
+                    break;
+                case 0b111: // off
+                    continue;
+            }
+            busy_wait_ms(100);
+        }
+        state->payload_len = sprintf((char*)state->buffer_send, "HTTP/1.1 200 OK\r\nContent-Length: %d\r\n\r\n%s", json_body_len, json_body);
     } else {
         int json_body_len = sprintf(json_body, "{\"status\": \"NG\"}\n");
         state->payload_len = sprintf((char*)state->buffer_send, "HTTP/1.1 400 Bad Request\r\nContent-Length: %d\r\n\r\n%s", json_body_len, json_body);
     }
+
     tcp_server_send_data(arg, tpcb);
 }
 
@@ -404,10 +436,10 @@ void run_tcp_server(void) {
 
 int main() {
     stdio_init_all();
-
+    gpio_init_mask(rgb_mask);
     pio = pio0;
     uint nec_offset = pio_add_program(pio, &nec_program);
-    nec_program_init(pio, 0 , nec_offset, LED_PIN, false);
+    nec_program_init(pio, 0 , nec_offset, LED_PIN);
 
     if (cyw43_arch_init()) {
         printf("failed to initialise\n");

@@ -2,6 +2,7 @@
     "files.associations": {
         "*.pio": "c",
         "clocks.h": "c",
-        "stdio.h": "c"
+        "stdio.h": "c",
+        "cstdlib": "c"
     }
 }
