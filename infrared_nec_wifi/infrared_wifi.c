@@ -16,16 +16,10 @@
 #define POLL_TIME_S 5
 #define LED_PIN 16
 
-#define max(a,b) \
-   ({ __typeof__ (a) _a = (a); \
-       __typeof__ (b) _b = (b); \
-     _a > _b ? _a : _b; })
-// Macros to generate the lookup table (at compile-time)
-#define R2(n) n, n + 2*64, n + 1*64, n + 3*64
-#define R4(n) R2(n), R2(n + 2*16), R2(n + 1*16), R2(n + 3*16)
-#define R6(n) R4(n), R4(n + 2*4 ), R4(n + 1*4 ), R4(n + 3*4 )
-#define REVERSE_BITS R6(0), R6(2), R6(1), R6(3)
- 
+PIO pio;
+uint32_t rgb_mask = 1 << 17 | 1 << 18 | 1 << 19;
+uint32_t rgb_base_pin = 17;
+
 typedef enum HTTP_METHOD_T_ {
     HTTP_METHOD_GET,
     HTTP_METHOD_POST,
@@ -43,7 +37,7 @@ typedef struct HTTP_MESSAGE_BODY_T_ {
     HTTP_METHOD_T method;
     HTTP_VERSION_T version;
     char url[20];
-    long long code;
+    uint32_t code;
 } HTTP_MESSAGE_BODY_T;
 
 typedef struct TCP_SERVER_T_ {
@@ -58,19 +52,27 @@ typedef struct TCP_SERVER_T_ {
     HTTP_MESSAGE_BODY_T *message_body;
 } TCP_SERVER_T;
 
-PIO pio;
 
-// lookup table to store the reverse of each index of the table.
-// The macro `REVERSE_BITS` generates the table
-unsigned int lookup[256] = { REVERSE_BITS };
-uint32_t rgb_mask = 1 << 17 | 1 << 18 | 1 << 19;
-uint32_t rgb_base_pin = 17;
-// Function to reverse bits of `n` using a lookup table
-int reverseBits(int n) {
-    return lookup[n & 0xff] << 24 |                // consider the first 8 bits
-           lookup[(n >> 8) & 0xff] << 16 |         // consider the next 8 bits
-           lookup[(n >> 16) & 0xff] << 8 |         // consider the next 8 bits
-           lookup[(n >> 24) & 0xff];               // consider last 8 bits
+uint32_t code_lookup(char *code) {
+    if (!strcmp(code, "status"))        { return 0; }
+    if (!strcmp(code, "power"))         { return 0x807F807F; }
+    if (!strcmp(code, "mute"))          { return 0x807FCC33; }
+    if (!strcmp(code, "volume_up"))     { return 0x807FC03F; }
+    if (!strcmp(code, "volume_down"))   { return 0x807F10EF; }
+    if (!strcmp(code, "previous"))      { return 0x807FA05F; }
+    if (!strcmp(code, "next"))          { return 0x807F609F; }
+    if (!strcmp(code, "play_pause"))    { return 0x807FE01F; }
+    if (!strcmp(code, "input"))         { return 0x807F40BF; }
+    if (!strcmp(code, "treble_up"))     { return 0x807FA45B; }
+    if (!strcmp(code, "treble_down"))   { return 0x807FE41B; }
+    if (!strcmp(code, "bass_up"))       { return 0x807F20DF; }
+    if (!strcmp(code, "bass_down"))     { return 0x807F649B; }
+    if (!strcmp(code, "pair"))          { return 0x807F906F; }
+    if (!strcmp(code, "flat"))          { return 0x807F48B7; }
+    if (!strcmp(code, "music"))         { return 0x807F946B; }
+    if (!strcmp(code, "dialog"))        { return 0x807F54AB; }
+    if (!strcmp(code, "movie"))         { return 0x807F14EB; }
+    return -1;
 }
 
 static TCP_SERVER_T* tcp_server_init(void) {
@@ -148,7 +150,7 @@ static void http_message_body_parse(void *arg) {
     state->message_body->method = HTTP_METHOD_GET;
     state->message_body->url[0] = '\0';
     state->message_body->version = HTTP_VERSION_1;
-    state->message_body->code = -1;
+    state->message_body->code = -2;
 
     char *message_body = (char*)state->buffer_recv;
     char *delim = " ?=&\r";
@@ -191,8 +193,8 @@ static void http_message_body_parse(void *arg) {
             case '=':
                     DEBUG_printf("http_message_body_parse value: %s\n", token);
                     if (!strcmp(key, "code")) {
-                        state->message_body->code = strtoll(token, NULL, 16); 
-                        DEBUG_printf("http_message_body_parse code: %llu\n", state->message_body->code);
+                        state->message_body->code = code_lookup(token);
+                        DEBUG_printf("http_message_body_parse code: %#x\n", state->message_body->code);
                     }
                 break; 
         }
@@ -259,64 +261,77 @@ static void http_message_body_parse(void *arg) {
 
         // Validate that the key associated with this value is the one we want. If so, capture the value and return
         if (!strcmp(key, "code")) { 
-            state->message_body->code = strtoll(token, NULL, 16); 
+            state->message_body->code = code_lookup(token); 
             DEBUG_printf("http_message_body_parse code: %llu\n", state->message_body->code);
             return; 
         }
         message_body++;
     }
 }
+void http_generate_response(void *arg, const char *json_body, const char *http_status) {
+    TCP_SERVER_T *state = (TCP_SERVER_T*)arg;
+    state->payload_len = sprintf((char*)state->buffer_send, 
+        "HTTP/1.1 %s\r\nContent-Length: %d\r\n\r\n%s", http_status, strlen(json_body), json_body);
+}
 
 void tcp_server_process_recv_data(void *arg, struct tcp_pcb *tpcb) {
     TCP_SERVER_T *state = (TCP_SERVER_T*)arg;
-    char json_body[1024];
     http_message_body_parse(arg);
-    if (state->message_body->method == HTTP_METHOD_PUT && 
-        state->message_body->version == HTTP_VERSION_1_1 &&
-        !strcmp(state->message_body->url, "/ir")) {
-        if (state->message_body->code != -1) {
-            int json_body_len = sprintf(json_body, "{\"status\": \"OK\"}\n");
-            state->payload_len = sprintf((char*)state->buffer_send, "HTTP/1.1 200 OK\r\nContent-Length: %d\r\n\r\n%s", json_body_len, json_body);
-            
-            pio_sm_put_blocking(pio, 0, reverseBits(state->message_body->code));
-        } else {
-            int json_body_len = sprintf(json_body, "{\"message\": \"Code variable required\"}\n");
-            state->payload_len = sprintf((char*)state->buffer_send, "HTTP/1.1 400 Bad Request\r\nContent-Length: %d\r\n\r\n%s", json_body_len, json_body);
+    if (state->message_body->method != HTTP_METHOD_PUT) {
+        http_generate_response(arg, "{\"message\": \"HTTP method not supported\"}\n", "400 Bad Request");
+        tcp_server_send_data(arg, tpcb);
+        return;
+    }
+    
+    if (state->message_body->version != HTTP_VERSION_1_1) {
+        http_generate_response(arg, "{\"message\": \"HTTP version must be 1.1\"}\n", "400 Bad Request");
+        tcp_server_send_data(arg, tpcb);
+        return;
+    }
+    
+    if (strcmp(state->message_body->url, "/")) {
+        http_generate_response(arg, "{\"message\": \"Endpoint not found\"}\n", "400 Bad Request");
+        tcp_server_send_data(arg, tpcb);
+        return;
+    }
+    
+    if (state->message_body->code <= 0) {
+        if (state->message_body->code == 0) {
+            uint32_t gpio;
+            do {
+                gpio = (gpio_get_all() & rgb_mask) >> rgb_base_pin;
+                switch(gpio) {
+                    case 0b110: // red
+                        http_generate_response(arg, "{\"status\": \"off\"}\n", "200 OK");
+                        break;
+                    case 0b100: // yellow
+                        http_generate_response(arg, "{\"status\": \"optical\"}\n", "200 OK");
+                        break;
+                    case 0b000: // white
+                        http_generate_response(arg, "{\"status\": \"aux\"}\n", "200 OK");
+                        break;
+                    case 0b101: // green
+                        http_generate_response(arg, "{\"status\": \"line-in\"}\n", "200 OK");
+                        break;
+                    case 0b011: // blue
+                        http_generate_response(arg, "{\"status\": \"bluetooth\"}\n", "200 OK");
+                        break;
+                    case 0b111: // off
+                        busy_wait_ms(50);
+                        continue;
+                }
+            } while(gpio == 0b111);
+        } else if (state->message_body->code == -1) {
+            http_generate_response(arg, "{\"message\": \"code not recognised\"}\n", "400 Bad Request");
+        } else if (state->message_body->code == -2) {
+            http_generate_response(arg, "{\"message\": \"code variable required\"}\n", "400 Bad Request");
         }
-    } else if (state->message_body->method == HTTP_METHOD_GET && 
-        state->message_body->version == HTTP_VERSION_1_1 &&
-        !strcmp(state->message_body->url, "/status")) {
-        int json_body_len = 0;
-        while (json_body_len == 0) {
-            uint32_t gpio = (gpio_get_all() & rgb_mask) >> rgb_base_pin;
-
-            switch(gpio) {
-                case 0b110: // red
-                    json_body_len = sprintf(json_body, "{\"status\": \"off\"}\n");
-                    break;
-                case 0b100: // yellow
-                    json_body_len = sprintf(json_body, "{\"status\": \"optical\"}\n");
-                    break;
-                case 0b000: // white
-                    json_body_len = sprintf(json_body, "{\"status\": \"aux\"}\n");
-                    break;
-                case 0b101: // green
-                    json_body_len = sprintf(json_body, "{\"status\": \"line-in\"}\n");
-                    break;
-                case 0b011: // blue
-                    json_body_len = sprintf(json_body, "{\"status\": \"bluetooth\"}\n");
-                    break;
-                case 0b111: // off
-                    continue;
-            }
-            busy_wait_ms(100);
-        }
-        state->payload_len = sprintf((char*)state->buffer_send, "HTTP/1.1 200 OK\r\nContent-Length: %d\r\n\r\n%s", json_body_len, json_body);
-    } else {
-        int json_body_len = sprintf(json_body, "{\"status\": \"NG\"}\n");
-        state->payload_len = sprintf((char*)state->buffer_send, "HTTP/1.1 400 Bad Request\r\nContent-Length: %d\r\n\r\n%s", json_body_len, json_body);
+        tcp_server_send_data(arg, tpcb);
+        return;
     }
 
+    pio_sm_put_blocking(pio, 0, state->message_body->code);
+    http_generate_response(arg, "{\"status\": \"OK\"}\n", "200 OK");
     tcp_server_send_data(arg, tpcb);
 }
 
@@ -447,14 +462,7 @@ int main() {
     }
 
     cyw43_arch_enable_sta_mode();
-
-    printf("Connecting to WiFi...\n");
-    if (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK, 30000)) {
-        printf("failed to connect.\n");
-        return 1;
-    } else {
-        printf("Connected.\n");
-    }
+    while(cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK, 30000)) {}
     run_tcp_server();
     cyw43_arch_deinit();
     return 0;

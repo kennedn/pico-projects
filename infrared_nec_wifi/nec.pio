@@ -33,7 +33,7 @@ static inline void nec_program_init(PIO pio, uint sm, uint offset, uint pin) {
     // 2 ticks per 560us window 
     float div = clock_get_hz(clk_sys) / (2 * (1 / 560.0e-6f));
     sm_config_set_clkdiv(&c, div);
-    sm_config_set_out_shift(&c, true, false, 32);
+    sm_config_set_out_shift(&c, false, false, 32);
     // Init the pio state machine with PC at offset
     pio_sm_init(pio, sm, offset, &c);
     // Start sm
